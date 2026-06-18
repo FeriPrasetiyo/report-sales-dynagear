@@ -31,9 +31,37 @@
             <div class="col-md-2 mb-2">
                 <select name="status" class="form-select">
                     <option value="">Semua Status</option>
-                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                    <option value="deal" {{ request('status') == 'deal' ? 'selected' : '' }}>Deal</option>
-                    <option value="no_deal" {{ request('status') == 'no_deal' ? 'selected' : '' }}>No Deal</option>
+                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>
+                        Pending
+                    </option>
+                    <option value="deal" {{ request('status') == 'deal' ? 'selected' : '' }}>
+                        Deal
+                    </option>
+                    <option value="no_deal" {{ request('status') == 'no_deal' ? 'selected' : '' }}>
+                        No Deal
+                    </option>
+                </select>
+            </div>
+
+            <div class="col-md-2 mb-2">
+                <select name="month" class="form-select">
+                    <option value="">Semua Bulan</option>
+                    @foreach(range(1,12) as $m)
+                        <option value="{{ $m }}" {{ request('month') == $m ? 'selected' : '' }}>
+                            {{ DateTime::createFromFormat('!m', $m)->format('F') }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-md-2 mb-2">
+                <select name="year" class="form-select">
+                    <option value="">Semua Tahun</option>
+                    @for($y = date('Y'); $y >= date('Y') - 5; $y--)
+                        <option value="{{ $y }}" {{ request('year') == $y ? 'selected' : '' }}>
+                            {{ $y }}
+                        </option>
+                    @endfor
                 </select>
             </div>
 
@@ -65,6 +93,58 @@
         </div>
     </form>
 
+    <div class="row mb-3">
+
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Total Pendapatan Deal</p>
+                    <h4 class="fw-bold text-success">
+                        Rp {{ number_format($totalPendapatan ?? 0, 0, ',', '.') }}
+                    </h4>
+                    <span class="badge bg-success">Status Deal</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Total Pending</p>
+                    <h4 class="fw-bold text-warning">
+                        Rp {{ number_format($totalPending ?? 0, 0, ',', '.') }}
+                    </h4>
+                    <span class="badge bg-warning text-dark">Status Pending</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Total No Deal</p>
+                    <h4 class="fw-bold text-danger">
+                        Rp {{ number_format($totalNoDeal ?? 0, 0, ',', '.') }}
+                    </h4>
+                    <span class="badge bg-danger">Status No Deal</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Total Semua Report</p>
+                    <h4 class="fw-bold text-primary">
+                        Rp {{ number_format($totalSemua ?? 0, 0, ',', '.') }}
+                    </h4>
+                    <span class="badge bg-primary">Berdasarkan Filter</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
     <div class="card shadow border-0">
         <div class="card-body table-responsive">
 
@@ -89,16 +169,32 @@
                 <tbody>
                     @forelse($reports as $report)
                         <tr>
-                            <td>{{ $loop->iteration + ($reports->currentPage() - 1) * $reports->perPage() }}</td>
+                            <td>
+                                {{ $loop->iteration + ($reports->currentPage() - 1) * $reports->perPage() }}
+                            </td>
+
                             <td>{{ $report->tanggal }}</td>
+
                             <td>{{ $report->sales->name ?? '-' }}</td>
+
                             <td>{{ $report->no_sq }}</td>
+
                             <td>{{ $report->no_po }}</td>
+
                             <td>{{ $report->customer_name }}</td>
+
                             <td>{{ Str::limit($report->description, 40) }}</td>
+
                             <td>{{ $report->qty }}</td>
-                            <td>Rp {{ number_format($report->price_unit, 0, ',', '.') }}</td>
-                            <td>Rp {{ number_format($report->total, 0, ',', '.') }}</td>
+
+                            <td>
+                                Rp {{ number_format($report->price_unit, 0, ',', '.') }}
+                            </td>
+
+                            <td>
+                                Rp {{ number_format($report->total, 0, ',', '.') }}
+                            </td>
+
                             <td>
                                 @if($report->status == 'deal')
                                     <span class="badge bg-success">Deal</span>
@@ -108,26 +204,30 @@
                                     <span class="badge bg-warning text-dark">Pending</span>
                                 @endif
                             </td>
+
                             <td>
-                                <a href="{{ route('sales-reports.show', $report->id) }}" class="btn btn-info btn-sm">
+                                <a href="{{ route('sales-reports.show', $report->id) }}"
+                                   class="btn btn-info btn-sm">
                                     Detail
                                 </a>
 
-                                <a href="{{ route('sales-reports.edit', $report->id) }}" class="btn btn-warning btn-sm">
-    {{ Auth::user()->role === 'sales' ? 'Ubah Status' : 'Edit' }}
-</a>
-                                @if(Auth::user()->role !== 'sales')
-                                <form action="{{ route('sales-reports.destroy', $report->id) }}"
-                                      method="POST"
-                                      class="d-inline"
-                                      onsubmit="return confirm('Yakin hapus data ini?')">
-                                    @csrf
-                                    @method('DELETE')
+                                <a href="{{ route('sales-reports.edit', $report->id) }}"
+                                   class="btn btn-warning btn-sm">
+                                    {{ Auth::user()->role === 'sales' ? 'Ubah Status' : 'Edit' }}
+                                </a>
 
-                                    <button class="btn btn-danger btn-sm">
-                                        Hapus
-                                    </button>
-                                </form>
+                                @if(Auth::user()->role !== 'sales')
+                                    <form action="{{ route('sales-reports.destroy', $report->id) }}"
+                                          method="POST"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Yakin hapus data ini?')">
+                                        @csrf
+                                        @method('DELETE')
+
+                                        <button class="btn btn-danger btn-sm">
+                                            Hapus
+                                        </button>
+                                    </form>
                                 @endif
                             </td>
                         </tr>

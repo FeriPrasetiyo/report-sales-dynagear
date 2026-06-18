@@ -23,14 +23,43 @@ class SalesReportController extends Controller
             $query->where('sales_id', Auth::id());
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | FILTER STATUS
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | FILTER BULAN & TAHUN
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('month')) {
+            $query->whereMonth('tanggal', $request->month);
+        }
+
+        if ($request->filled('year')) {
+            $query->whereYear('tanggal', $request->year);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | FILTER SALES
+        |--------------------------------------------------------------------------
+        | Hanya admin dan manager yang boleh filter berdasarkan sales.
+        */
         if ($request->filled('sales_id') && Auth::user()->role !== 'sales') {
             $query->where('sales_id', $request->sales_id);
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | SEARCH CUSTOMER / SQ / PO
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('customer_name', 'like', '%' . $request->search . '%')
@@ -39,13 +68,42 @@ class SalesReportController extends Controller
             });
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | TOTAL PENDAPATAN
+        |--------------------------------------------------------------------------
+        | Menghitung total nilai report yang statusnya DEAL
+        | berdasarkan filter yang sedang aktif.
+        */
+        $totalPendapatan = (clone $query)
+            ->where('status', 'deal')
+            ->sum('total');
+
+        $totalPending = (clone $query)
+            ->where('status', 'pending')
+            ->sum('total');
+
+        $totalNoDeal = (clone $query)
+            ->where('status', 'no_deal')
+            ->sum('total');
+
+        $totalSemua = (clone $query)
+            ->sum('total');
+
         $reports = $query->paginate(10)->withQueryString();
 
         $salesUsers = User::where('role', 'sales')
             ->orderBy('name')
             ->get();
 
-        return view('sales_reports.index', compact('reports', 'salesUsers'));
+        return view('sales_reports.index', compact(
+            'reports',
+            'salesUsers',
+            'totalPendapatan',
+            'totalPending',
+            'totalNoDeal',
+            'totalSemua'
+        ));
     }
 
     public function create()
