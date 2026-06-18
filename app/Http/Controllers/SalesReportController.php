@@ -13,6 +13,12 @@ class SalesReportController extends Controller
     {
         $query = SalesReport::with('sales')->latest();
 
+        /*
+        |--------------------------------------------------------------------------
+        | SALES
+        |--------------------------------------------------------------------------
+        | Sales hanya melihat report miliknya sendiri.
+        */
         if (Auth::user()->role === 'sales') {
             $query->where('sales_id', Auth::id());
         }
@@ -93,43 +99,37 @@ class SalesReportController extends Controller
     }
 
     public function show(SalesReport $salesReport)
-{
-    if (Auth::user()->role === 'sales') {
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | DETAIL REPORT
+        |--------------------------------------------------------------------------
+        | Sales boleh masuk detail agar bisa melihat komentar dan membalas komentar.
+        | Data yang muncul di index sales tetap dibatasi hanya miliknya sendiri.
+        */
+        $salesReport->load('sales', 'comments.user');
 
-        if ((int) $salesReport->sales_id !== (int) Auth::id()) {
-            abort(403, 'Anda tidak memiliki akses.');
-        }
-
+        return view('sales_reports.show', compact('salesReport'));
     }
-
-    $salesReport->load('sales', 'comments.user');
-
-    return view('sales_reports.show', compact('salesReport'));
-}
 
     public function edit(SalesReport $salesReport)
-{
-    if (Auth::user()->role === 'sales') {
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | EDIT REPORT
+        |--------------------------------------------------------------------------
+        | Sales boleh masuk halaman edit, tetapi di view hanya muncul form ubah status.
+        | Admin dan Manager tetap bisa edit data lengkap.
+        */
+        $salesUsers = User::where('role', 'sales')
+            ->orderBy('name')
+            ->get();
 
-        if ((int) $salesReport->sales_id !== (int) Auth::id()) {
-            abort(403, 'Anda tidak memiliki akses.');
-        }
-
+        return view('sales_reports.edit', compact('salesReport', 'salesUsers'));
     }
-
-    $salesUsers = User::where('role', 'sales')
-        ->orderBy('name')
-        ->get();
-
-    return view('sales_reports.edit', compact('salesReport', 'salesUsers'));
-}
 
     public function update(Request $request, SalesReport $salesReport)
     {
-        if (Auth::user()->role === 'sales' && $salesReport->sales_id !== Auth::id()) {
-            abort(403, 'Anda tidak memiliki akses.');
-        }
-
         /*
         |--------------------------------------------------------------------------
         | SALES
@@ -138,19 +138,18 @@ class SalesReportController extends Controller
         | pending / deal / no_deal
         */
         if (Auth::user()->role === 'sales') {
+            $request->validate([
+                'status' => 'required|in:pending,deal,no_deal',
+            ]);
 
-    $request->validate([
-        'status' => 'required|in:pending,deal,no_deal',
-    ]);
+            $salesReport->update([
+                'status' => $request->status,
+            ]);
 
-    $salesReport->update([
-        'status' => $request->status,
-    ]);
-
-    return redirect()
-        ->route('sales-reports.index')
-        ->with('success', 'Status berhasil diubah.');
-}
+            return redirect()
+                ->route('sales-reports.index')
+                ->with('success', 'Status report berhasil diubah.');
+        }
 
         /*
         |--------------------------------------------------------------------------
