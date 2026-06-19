@@ -85,9 +85,17 @@
                         </tr>
                     </table>
 
-                    <a href="{{ route('sales-reports.edit', $salesReport->id) }}" class="btn btn-warning">
-                        Edit Report
-                    </a>
+                   @if(Auth::user()->role !== 'sales')
+    <a href="{{ route('sales-reports.edit', $salesReport->id) }}"
+       class="btn btn-warning">
+        Edit Report
+    </a>
+    <a href="{{ route('sales-reports.print', $salesReport->id) }}"
+   target="_blank"
+   class="btn btn-danger">
+    Cetak PDF
+</a>
+@endif
                 </div>
             </div>
         </div>

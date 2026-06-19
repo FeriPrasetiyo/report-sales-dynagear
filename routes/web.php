@@ -27,18 +27,15 @@ Route::middleware(['auth'])->group(function () {
         ->name('profile.destroy');
 
     Route::middleware(['role:admin,manager,sales'])->group(function () {
-
         Route::resource('sales-reports', SalesReportController::class);
         Route::post('sales-reports/{salesReport}/comments',[SalesReportCommentController::class, 'store'])->name('sales-reports.comments.store');
+        Route::get('sales-reports/{salesReport}/print',[SalesReportController::class, 'print'])->name('sales-reports.print');
+        Route::get('sales-reports-print',[SalesReportController::class, 'printIndex'])->name('sales-reports.print-index');
 
     });
-
     Route::middleware(['role:admin'])->group(function () {
-
         Route::resource('users', UserController::class);
         Route::resource('sales-targets', SalesTargetController::class);
-        
-
     });
 
 });

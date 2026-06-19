@@ -13,30 +13,14 @@ class SalesReportController extends Controller
     {
         $query = SalesReport::with('sales')->latest();
 
-        /*
-        |--------------------------------------------------------------------------
-        | SALES
-        |--------------------------------------------------------------------------
-        | Sales hanya melihat report miliknya sendiri.
-        */
         if (Auth::user()->role === 'sales') {
             $query->where('sales_id', Auth::id());
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | FILTER STATUS
-        |--------------------------------------------------------------------------
-        */
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | FILTER BULAN & TAHUN
-        |--------------------------------------------------------------------------
-        */
         if ($request->filled('month')) {
             $query->whereMonth('tanggal', $request->month);
         }
@@ -45,21 +29,10 @@ class SalesReportController extends Controller
             $query->whereYear('tanggal', $request->year);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | FILTER SALES
-        |--------------------------------------------------------------------------
-        | Hanya admin dan manager yang boleh filter berdasarkan sales.
-        */
         if ($request->filled('sales_id') && Auth::user()->role !== 'sales') {
             $query->where('sales_id', $request->sales_id);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | SEARCH CUSTOMER / SQ / PO
-        |--------------------------------------------------------------------------
-        */
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('customer_name', 'like', '%' . $request->search . '%')
@@ -68,13 +41,6 @@ class SalesReportController extends Controller
             });
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | TOTAL PENDAPATAN
-        |--------------------------------------------------------------------------
-        | Menghitung total nilai report yang statusnya DEAL
-        | berdasarkan filter yang sedang aktif.
-        */
         $totalPendapatan = (clone $query)
             ->where('status', 'deal')
             ->sum('total');
@@ -108,6 +74,10 @@ class SalesReportController extends Controller
 
     public function create()
     {
+        if (Auth::user()->role === 'sales') {
+            abort(403, 'Sales tidak boleh menambahkan report.');
+        }
+
         $salesUsers = User::where('role', 'sales')
             ->orderBy('name')
             ->get();
@@ -117,6 +87,10 @@ class SalesReportController extends Controller
 
     public function store(Request $request)
     {
+        if (Auth::user()->role === 'sales') {
+            abort(403, 'Sales tidak boleh menambahkan report.');
+        }
+
         $request->validate([
             'tanggal' => 'required|date',
             'no_sq' => 'nullable|string|max:255',
@@ -158,13 +132,6 @@ class SalesReportController extends Controller
 
     public function show(SalesReport $salesReport)
     {
-        /*
-        |--------------------------------------------------------------------------
-        | DETAIL REPORT
-        |--------------------------------------------------------------------------
-        | Sales boleh masuk detail agar bisa melihat komentar dan membalas komentar.
-        | Data yang muncul di index sales tetap dibatasi hanya miliknya sendiri.
-        */
         $salesReport->load('sales', 'comments.user');
 
         return view('sales_reports.show', compact('salesReport'));
@@ -172,13 +139,10 @@ class SalesReportController extends Controller
 
     public function edit(SalesReport $salesReport)
     {
-        /*
-        |--------------------------------------------------------------------------
-        | EDIT REPORT
-        |--------------------------------------------------------------------------
-        | Sales boleh masuk halaman edit, tetapi di view hanya muncul form ubah status.
-        | Admin dan Manager tetap bisa edit data lengkap.
-        */
+        if (Auth::user()->role === 'sales') {
+            abort(403, 'Sales tidak boleh mengubah report.');
+        }
+
         $salesUsers = User::where('role', 'sales')
             ->orderBy('name')
             ->get();
@@ -188,33 +152,10 @@ class SalesReportController extends Controller
 
     public function update(Request $request, SalesReport $salesReport)
     {
-        /*
-        |--------------------------------------------------------------------------
-        | SALES
-        |--------------------------------------------------------------------------
-        | Sales hanya boleh mengubah status:
-        | pending / deal / no_deal
-        */
         if (Auth::user()->role === 'sales') {
-            $request->validate([
-                'status' => 'required|in:pending,deal,no_deal',
-            ]);
-
-            $salesReport->update([
-                'status' => $request->status,
-            ]);
-
-            return redirect()
-                ->route('sales-reports.index')
-                ->with('success', 'Status report berhasil diubah.');
+            abort(403, 'Sales tidak boleh mengubah status report.');
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | ADMIN / MANAGER
-        |--------------------------------------------------------------------------
-        | Admin dan Manager boleh mengubah semua data report.
-        */
         $request->validate([
             'tanggal' => 'required|date',
             'sales_id' => 'nullable|exists:users,id',
@@ -257,11 +198,6 @@ class SalesReportController extends Controller
 
     public function destroy(SalesReport $salesReport)
     {
-        /*
-        |--------------------------------------------------------------------------
-        | SALES TIDAK BOLEH HAPUS REPORT
-        |--------------------------------------------------------------------------
-        */
         if (Auth::user()->role === 'sales') {
             abort(403, 'Sales tidak boleh menghapus report.');
         }
@@ -272,4 +208,58 @@ class SalesReportController extends Controller
             ->route('sales-reports.index')
             ->with('success', 'Report sales berhasil dihapus.');
     }
+
+    public function print(SalesReport $salesReport)
+    {
+    $salesReport->load('sales', 'comments.user');
+
+    return view('sales_reports.print', compact('salesReport'));
+    }
+    public function printIndex(Request $request)
+{
+    $query = SalesReport::with('sales')->latest();
+
+    if (Auth::user()->role === 'sales') {
+        $query->where('sales_id', Auth::id());
+    }
+
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+
+    if ($request->filled('month')) {
+        $query->whereMonth('tanggal', $request->month);
+    }
+
+    if ($request->filled('year')) {
+        $query->whereYear('tanggal', $request->year);
+    }
+
+    if ($request->filled('sales_id') && Auth::user()->role !== 'sales') {
+        $query->where('sales_id', $request->sales_id);
+    }
+
+    if ($request->filled('search')) {
+        $query->where(function ($q) use ($request) {
+            $q->where('customer_name', 'like', '%' . $request->search . '%')
+                ->orWhere('no_sq', 'like', '%' . $request->search . '%')
+                ->orWhere('no_po', 'like', '%' . $request->search . '%');
+        });
+    }
+
+    $reports = $query->get();
+
+    $totalPendapatan = (clone $query)->where('status', 'deal')->sum('total');
+    $totalPending = (clone $query)->where('status', 'pending')->sum('total');
+    $totalNoDeal = (clone $query)->where('status', 'no_deal')->sum('total');
+    $totalSemua = (clone $query)->sum('total');
+
+    return view('sales_reports.print_index', compact(
+        'reports',
+        'totalPendapatan',
+        'totalPending',
+        'totalNoDeal',
+        'totalSemua'
+    ));
+}
 }

@@ -1,14 +1,20 @@
 @extends('layouts.app')
 
 @section('content')
+
 <div class="container-fluid py-4">
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="fw-bold">Report Sales</h3>
+        <h3 class="fw-bold mb-0">
+            Report Sales
+        </h3>
 
-        <a href="{{ route('sales-reports.create') }}" class="btn btn-primary">
-            + Tambah Report
-        </a>
+        @if(Auth::user()->role !== 'sales')
+            <a href="{{ route('sales-reports.create') }}"
+               class="btn btn-primary">
+                + Tambah Report
+            </a>
+        @endif
     </div>
 
     @if(session('success'))
@@ -17,10 +23,16 @@
         </div>
     @endif
 
-    <form method="GET" class="card card-body shadow-sm border-0 mb-3">
-        <div class="row">
+    <form method="GET"
+          class="card card-body shadow-sm border-0 mb-3">
 
-            <div class="col-md-3 mb-2">
+        <div class="row g-2 align-items-end">
+
+            <div class="col-12 col-md-3">
+                <label class="form-label small text-muted">
+                    Pencarian
+                </label>
+
                 <input type="text"
                        name="search"
                        class="form-control"
@@ -28,24 +40,36 @@
                        value="{{ request('search') }}">
             </div>
 
-            <div class="col-md-2 mb-2">
+            <div class="col-12 col-md-2">
+                <label class="form-label small text-muted">
+                    Status
+                </label>
+
                 <select name="status" class="form-select">
                     <option value="">Semua Status</option>
+
                     <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>
                         Pending
                     </option>
+
                     <option value="deal" {{ request('status') == 'deal' ? 'selected' : '' }}>
                         Deal
                     </option>
+
                     <option value="no_deal" {{ request('status') == 'no_deal' ? 'selected' : '' }}>
                         No Deal
                     </option>
                 </select>
             </div>
 
-            <div class="col-md-2 mb-2">
+            <div class="col-12 col-md-2">
+                <label class="form-label small text-muted">
+                    Bulan
+                </label>
+
                 <select name="month" class="form-select">
                     <option value="">Semua Bulan</option>
+
                     @foreach(range(1,12) as $m)
                         <option value="{{ $m }}" {{ request('month') == $m ? 'selected' : '' }}>
                             {{ DateTime::createFromFormat('!m', $m)->format('F') }}
@@ -54,9 +78,14 @@
                 </select>
             </div>
 
-            <div class="col-md-2 mb-2">
+            <div class="col-12 col-md-2">
+                <label class="form-label small text-muted">
+                    Tahun
+                </label>
+
                 <select name="year" class="form-select">
                     <option value="">Semua Tahun</option>
+
                     @for($y = date('Y'); $y >= date('Y') - 5; $y--)
                         <option value="{{ $y }}" {{ request('year') == $y ? 'selected' : '' }}>
                             {{ $y }}
@@ -66,9 +95,14 @@
             </div>
 
             @if(Auth::user()->role !== 'sales')
-                <div class="col-md-3 mb-2">
+                <div class="col-12 col-md-3">
+                    <label class="form-label small text-muted">
+                        Sales
+                    </label>
+
                     <select name="sales_id" class="form-select">
                         <option value="">Semua Sales</option>
+
                         @foreach($salesUsers as $sales)
                             <option value="{{ $sales->id }}" {{ request('sales_id') == $sales->id ? 'selected' : '' }}>
                                 {{ $sales->name }}
@@ -78,23 +112,33 @@
                 </div>
             @endif
 
-            <div class="col-md-2 mb-2">
-                <button class="btn btn-dark w-100">
+            <div class="col-12 col-md-2">
+                <button type="submit"
+                        class="btn btn-dark w-100">
                     Filter
                 </button>
             </div>
 
-            <div class="col-md-2 mb-2">
-                <a href="{{ route('sales-reports.index') }}" class="btn btn-secondary w-100">
+            <div class="col-12 col-md-2">
+                <a href="{{ route('sales-reports.index') }}"
+                   class="btn btn-secondary w-100">
                     Reset
                 </a>
             </div>
 
+            <div class="col-12 col-md-2">
+                <a href="{{ route('sales-reports.print-index', request()->query()) }}"
+                   target="_blank"
+                   class="btn btn-danger w-100">
+                    Cetak PDF
+                </a>
+            </div>
+
         </div>
+
     </form>
 
     <div class="row mb-3">
-
         <div class="col-md-3 mb-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
@@ -211,12 +255,14 @@
                                     Detail
                                 </a>
 
-                                <a href="{{ route('sales-reports.edit', $report->id) }}"
-                                   class="btn btn-warning btn-sm">
-                                    {{ Auth::user()->role === 'sales' ? 'Ubah Status' : 'Edit' }}
-                                </a>
-
                                 @if(Auth::user()->role !== 'sales')
+    <a href="{{ route('sales-reports.edit', $report->id) }}"
+       class="btn btn-warning btn-sm">
+        Edit
+    </a>
+@endif
+
+                                @if(Auth::user()->role !== 'sales') 
                                     <form action="{{ route('sales-reports.destroy', $report->id) }}"
                                           method="POST"
                                           class="d-inline"
